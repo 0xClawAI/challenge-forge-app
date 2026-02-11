@@ -234,21 +234,23 @@ function DailyScreen({ challengeId }: { challengeId: string }) {
         {/* Header */}
         <View style={styles.dailyHeader}>
           <View style={{ flex: 1 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <Text style={[styles.h1, { color: primary.t1, flex: 1 }]}>{ch.name}</Text>
-              <TouchableOpacity
-                style={[styles.editIcon, { backgroundColor: 'rgba(255,255,255,0.06)', borderColor: primary.border }]}
-                onPress={() => router.push({ pathname: '/create', params: { editId: ch.id } })}
-              >
-                <Text style={{ fontSize: 14 }}>✏️</Text>
-              </TouchableOpacity>
-            </View>
+            <Text style={[styles.h1, { color: primary.t1 }]}>{ch.name}</Text>
             <Text style={[styles.sub, { color: primary.t2 }]}>
               Day <Text style={{ color: accent.accentL, fontWeight: '700' }}>{dn}</Text> of {ch.duration} · {ch.duration - dn} left
             </Text>
           </View>
           <ProgressRing size={56} strokeWidth={5} progress={pct} label={`${pct}%`} />
         </View>
+
+        {/* Edit action */}
+        <TouchableOpacity
+          style={[styles.editRow, { borderColor: primary.border }]}
+          onPress={() => router.push({ pathname: '/create', params: { editId: ch.id } })}
+          activeOpacity={0.6}
+        >
+          <Text style={{ fontSize: 13 }}>✏️</Text>
+          <Text style={[styles.editRowText, { color: primary.t3 }]}>Edit Challenge</Text>
+        </TouchableOpacity>
 
         {/* Progress bar */}
         <View style={[styles.progressBar, { backgroundColor: 'rgba(255,255,255,0.04)' }]}>
@@ -376,7 +378,8 @@ const styles = StyleSheet.create({
   dailyHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 },
   h1: { fontSize: 30, fontWeight: '800', letterSpacing: -0.8, lineHeight: 34 },
   sub: { fontSize: 14, marginTop: 4 },
-  editIcon: { width: 32, height: 32, borderRadius: 8, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  editRow: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', paddingVertical: 6, paddingHorizontal: 10, borderRadius: 8, borderWidth: 1, marginBottom: 16, marginTop: -8 },
+  editRowText: { fontSize: 13, fontWeight: '500' },
 
   progressBar: { height: 3, borderRadius: 2, marginBottom: 20, overflow: 'hidden' },
   progressFill: { height: '100%', borderRadius: 2 },

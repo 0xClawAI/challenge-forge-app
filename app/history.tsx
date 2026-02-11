@@ -5,10 +5,11 @@ import { useTheme } from '../src/theme/ThemeContext';
 import { useChallengeStore } from '../src/stores/challengeStore';
 import { getStatus, getCompletedDays, getStreak } from '../src/utils/challenge';
 import { getDayNum, getToday, getDayKey } from '../src/utils/date';
+import { SwipeableHistoryItem } from '../src/components/SwipeableHistoryItem';
 
 export default function HistoryScreen() {
   const { primary, accent, colors } = useTheme();
-  const { challenges, setActiveId, dayResetHour } = useChallengeStore();
+  const { challenges, setActiveId, deleteChallenge, dayResetHour } = useChallengeStore();
   const chs = [...challenges].reverse();
   const todayStr = getToday(dayResetHour);
   const completed = chs.filter(c => getStatus(c, dayResetHour) === 'completed').length;
@@ -51,12 +52,13 @@ export default function HistoryScreen() {
               st === 'failed' ? `❌ Failed Day ${c.endedDay || dn}` :
               st === 'ended' ? `🏁 Ended Day ${c.endedDay || dn}` : `⚡ Active — Day ${dn}`;
             const borderColor = st === 'completed' ? colors.ok : st === 'failed' ? colors.err : st === 'ended' ? colors.warn : accent.accent;
+            const isInactive = st !== 'active';
 
-            return (
+            const cardContent = (
               <TouchableOpacity
-                key={c.id}
-                style={[styles.card, { backgroundColor: primary.bgS, borderColor: primary.border, borderLeftColor: borderColor, borderLeftWidth: 3 }]}
+                style={[styles.card, { backgroundColor: primary.bgS, borderColor: primary.border, borderLeftColor: borderColor, borderLeftWidth: 3, marginBottom: isInactive ? 0 : 12 }]}
                 onPress={() => { setActiveId(c.id); }}
+                activeOpacity={0.7}
               >
                 <View style={styles.cardRow}>
                   <View style={{ flex: 1 }}>
@@ -68,6 +70,21 @@ export default function HistoryScreen() {
                 </View>
               </TouchableOpacity>
             );
+
+            // Only ended/failed/completed challenges can be swiped to delete
+            if (isInactive) {
+              return (
+                <SwipeableHistoryItem
+                  key={c.id}
+                  challengeName={c.name}
+                  onDelete={() => deleteChallenge(c.id)}
+                >
+                  {cardContent}
+                </SwipeableHistoryItem>
+              );
+            }
+
+            return <View key={c.id}>{cardContent}</View>;
           })
         )}
       </ScrollView>

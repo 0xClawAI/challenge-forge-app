@@ -18,6 +18,7 @@ interface ChallengeState {
   failChallenge: (id: string) => void;
   endChallenge: (id: string) => void;
   updateDayLog: (challengeId: string, dateKey: string, update: Partial<DayLog>) => void;
+  deleteChallenge: (id: string) => void;
   resetAllData: () => void;
   importData: (challenges: Challenge[], activeId: string | null) => void;
 }
@@ -104,6 +105,13 @@ export const useChallengeStore = create<ChallengeState>()(
             const dn = getDayNum(c.startDate, c.duration, todayStr);
             return { ...c, ended: 'ended' as const, endedDay: dn, endedDate: todayStr };
           }),
+          activeId: state.activeId === id ? null : state.activeId,
+        }));
+      },
+
+      deleteChallenge: (id) => {
+        set((state) => ({
+          challenges: state.challenges.filter(c => c.id !== id),
           activeId: state.activeId === id ? null : state.activeId,
         }));
       },
