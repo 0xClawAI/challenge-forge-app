@@ -1,18 +1,15 @@
-import React, { useRef } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
-  Animated,
-  PanResponder,
   StyleSheet,
   Alert,
   TouchableOpacity,
+  Animated,
   Dimensions,
 } from 'react-native';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
-const SWIPE_THRESHOLD = -80;
-const DELETE_WIDTH = 80;
 
 interface Props {
   children: React.ReactNode;
@@ -21,82 +18,38 @@ interface Props {
 }
 
 export function SwipeableHistoryItem({ children, onDelete, challengeName }: Props) {
-  const translateX = useRef(new Animated.Value(0)).current;
-  const isOpen = useRef(false);
+  const [showDelete, setShowDelete] = useState(false);
+  const slideAnim = React.useRef(new Animated.Value(0)).current;
 
-  const panResponder = useRef(
-    PanResponder.create({
-      onMoveShouldSetPanResponder: (_, gs) =>
-        Math.abs(gs.dx) > 10 && Math.abs(gs.dx) > Math.abs(gs.dy),
-      onPanResponderGrant: () => {
-        // If already open, start from -DELETE_WIDTH
-        translateX.setOffset(isOpen.current ? -DELETE_WIDTH : 0);
-        translateX.setValue(0);
-      },
-      onPanResponderMove: (_, gs) => {
-        const val = gs.dx;
-        // Only allow left swipe (negative) up to delete width
-        if (isOpen.current) {
-          // Allow dragging back right or further left
-          const clamped = Math.max(-DELETE_WIDTH, Math.min(DELETE_WIDTH, val));
-          translateX.setValue(clamped);
-        } else {
-          const clamped = Math.max(-DELETE_WIDTH - 20, Math.min(0, val));
-          translateX.setValue(clamped);
-        }
-      },
-      onPanResponderRelease: (_, gs) => {
-        translateX.flattenOffset();
-        if (isOpen.current) {
-          // If swiped right enough, close
-          if (gs.dx > 30) {
-            close();
-          } else {
-            open();
-          }
-        } else {
-          // If swiped left enough, open
-          if (gs.dx < SWIPE_THRESHOLD) {
-            open();
-          } else {
-            close();
-          }
-        }
-      },
-    })
-  ).current;
-
-  const open = () => {
-    isOpen.current = true;
-    Animated.spring(translateX, {
-      toValue: -DELETE_WIDTH,
-      useNativeDriver: true,
-      friction: 8,
-    }).start();
-  };
-
-  const close = () => {
-    isOpen.current = false;
-    Animated.spring(translateX, {
-      toValue: 0,
-      useNativeDriver: true,
-      friction: 8,
-    }).start();
+  const toggleDelete = () => {
+    if (showDelete) {
+      Animated.spring(slideAnim, {
+        toValue: 0,
+        useNativeDriver: true,
+        friction: 8,
+      }).start(() => setShowDelete(false));
+    } else {
+      setShowDelete(true);
+      Animated.spring(slideAnim, {
+        toValue: 1,
+        useNativeDriver: true,
+        friction: 8,
+      }).start();
+    }
   };
 
   const handleDelete = () => {
-    close();
     Alert.alert(
       'Delete Challenge',
       `Delete "${challengeName}" from history? This cannot be undone.`,
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: 'Cancel', style: 'cancel', onPress: toggleDelete },
         {
           text: 'Delete',
           style: 'destructive',
           onPress: () => {
-            Animated.timing(translateX, {
-              toValue: -SCREEN_WIDTH,
+            Animated.timing(slideAnim, {
+              toValue: 2,
               duration: 250,
               useNativeDriver: true,
             }).start(() => onDelete());
@@ -106,22 +59,32 @@ export function SwipeableHistoryItem({ children, onDelete, challengeName }: Prop
     );
   };
 
+  const translateX = slideAnim.interpolate({
+    inputRange: [0, 1, 2],
+    outputRange: [0, -80, -SCREEN_WIDTH],
+  });
+
   return (
     <View style={styles.container}>
-      {/* Red delete background */}
-      <View style={styles.deleteContainer}>
-        <TouchableOpacity style={styles.deleteBtn} onPress={handleDelete} activeOpacity={0.7}>
-          <Text style={styles.deleteIcon}>🗑️</Text>
-          <Text style={styles.deleteText}>Delete</Text>
-        </TouchableOpacity>
-      </View>
+      {/* Delete button behind */}
+      {showDelete && (
+        <View style={styles.deleteContainer}>
+          <TouchableOpacity style={styles.deleteBtn} onPress={handleDelete} activeOpacity={0.7}>
+            <Text style={styles.deleteIcon}>🗑️</Text>
+            <Text style={styles.deleteText}>Delete</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
-      {/* Swipeable content */}
-      <Animated.View
-        style={{ transform: [{ translateX }] }}
-        {...panResponder.panHandlers}
-      >
-        {children}
+      {/* Content */}
+      <Animated.View style={{ transform: [{ translateX }] }}>
+        <TouchableOpacity
+          activeOpacity={0.9}
+          onLongPress={toggleDelete}
+          delayLongPress={400}
+        >
+          {children}
+        </TouchableOpacity>
       </Animated.View>
     </View>
   );
@@ -138,7 +101,7 @@ const styles = StyleSheet.create({
     right: 0,
     top: 0,
     bottom: 0,
-    width: DELETE_WIDTH,
+    width: 80,
     backgroundColor: '#EF4444',
     borderRadius: 14,
     justifyContent: 'center',
