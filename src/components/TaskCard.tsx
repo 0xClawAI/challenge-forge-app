@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, Pressable, Image } from 'react-native';
-import * as Haptics from 'expo-haptics';
-import * as ImagePicker from 'expo-image-picker';
+import * as Haptics from '../utils/haptics';
+import * as ImagePicker from '../utils/imagePicker';
 import { useTheme } from '../theme/ThemeContext';
 import { Task, TaskLog } from '../types';
 import { TYPE_COLORS, TASK_ICONS } from '../theme/colors';
