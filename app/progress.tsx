@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Modal, Dimensions } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Modal, Dimensions, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../src/theme/ThemeContext';
 import { useChallengeStore } from '../src/stores/challengeStore';
@@ -7,6 +7,7 @@ import { getToday, getDayNum, getDayKey } from '../src/utils/date';
 import { isDayDone, getDayLog, getStreak, getCompletedDays, getStatus, isTaskDone } from '../src/utils/challenge';
 import { ProgressRing } from '../src/components/ProgressRing';
 import { TYPE_COLORS, TASK_ICONS } from '../src/theme/colors';
+import { PhotoViewer } from '../src/components/PhotoViewer';
 
 export default function ProgressScreen() {
   const { primary, accent, colors } = useTheme();
@@ -32,6 +33,7 @@ export default function ProgressScreen() {
   const pct = Math.round((completed / ch.duration) * 100);
   const bigCirc = Math.PI * 124;
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
+  const [viewingPhoto, setViewingPhoto] = useState<string | null>(null);
 
   const screenWidth = Dimensions.get('window').width;
   const gridPadding = 20 * 2;
@@ -145,7 +147,12 @@ export default function ProgressScreen() {
                           {task.type === 'counter' && <Text style={{ color: primary.t2, fontSize: 13 }}>{tl.count || 0} {task.config?.unit || 'times'}</Text>}
                           {task.type === 'multi' && <Text style={{ color: primary.t2, fontSize: 13 }}>{(tl.selected || []).join(', ') || 'None'}</Text>}
                           {task.type === 'journal' && tl.text && <Text style={{ color: primary.t2, fontSize: 13, fontStyle: 'italic' }} numberOfLines={3}>{tl.text}</Text>}
-                          {task.type === 'photo' && tl.photo && <Text style={{ color: primary.t2, fontSize: 13 }}>📷 Photo captured</Text>}
+                          {task.type === 'photo' && tl.photo && (
+                            <TouchableOpacity onPress={() => setViewingPhoto(tl.photo!)} activeOpacity={0.8}>
+                              <Image source={{ uri: tl.photo }} style={{ width: '100%', height: 160, borderRadius: 8, marginTop: 6 }} resizeMode="cover" />
+                              <Text style={{ color: accent.accentL, fontSize: 12, marginTop: 4, textAlign: 'center' }}>Tap to view full screen</Text>
+                            </TouchableOpacity>
+                          )}
                         </View>
                       );
                     })}
@@ -188,6 +195,13 @@ export default function ProgressScreen() {
           );
         })}
       </ScrollView>
+      <PhotoViewer
+        uri={viewingPhoto || ''}
+        visible={!!viewingPhoto}
+        onClose={() => setViewingPhoto(null)}
+        primary={primary}
+        accent={accent}
+      />
     </SafeAreaView>
   );
 }
