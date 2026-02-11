@@ -1,10 +1,10 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity, TextInput,
   KeyboardAvoidingView, Platform, Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as Haptics from '../src/utils/haptics';
 import { useTheme } from '../src/theme/ThemeContext';
 import { useChallengeStore } from '../src/stores/challengeStore';
@@ -37,15 +37,29 @@ interface WizardState {
 export default function CreateScreen() {
   const { primary, accent, colors } = useTheme();
   const router = useRouter();
-  const { createChallenge } = useChallengeStore();
+  const params = useLocalSearchParams<{ editId?: string }>();
+  const { createChallenge, updateChallenge, challenges } = useChallengeStore();
+  const editChallenge = params.editId ? challenges.find(c => c.id === params.editId) : null;
+  const isEditing = !!editChallenge;
 
   const [step, setStep] = useState(1);
-  const [wiz, setWiz] = useState<WizardState>({
-    name: '',
-    duration: 75,
-    customDuration: '',
-    tasks: [],
-    strictness: { failureMode: 'restart', gracePeriod: 0, freezes: 0, minTasks: 'all' },
+  const [wiz, setWiz] = useState<WizardState>(() => {
+    if (editChallenge) {
+      return {
+        name: editChallenge.name,
+        duration: editChallenge.duration,
+        customDuration: '',
+        tasks: editChallenge.tasks.map(t => ({ ...t, config: { ...t.config } })),
+        strictness: { ...editChallenge.strictness },
+      };
+    }
+    return {
+      name: '',
+      duration: 75,
+      customDuration: '',
+      tasks: [],
+      strictness: { failureMode: 'restart', gracePeriod: 0, freezes: 0, minTasks: 'all' },
+    };
   });
   const [showCustomDur, setShowCustomDur] = useState(false);
   const [editingTask, setEditingTask] = useState<number | null>(null);
@@ -88,8 +102,15 @@ export default function CreateScreen() {
   }, []);
 
   const addSuggestion = useCallback((sug: TaskSuggestion) => {
-    addTask({ name: sug.name, type: sug.type, icon: sug.icon, config: { ...sug.config } });
-  }, [addTask]);
+    const newTask = { name: sug.name, type: sug.type, icon: sug.icon, config: { ...sug.config } } as Task;
+    setWiz(w => {
+      const newTasks = [...w.tasks, { ...newTask, config: { ...newTask.config } }];
+      // Open editor for newly added task
+      setTimeout(() => setEditingTask(newTasks.length - 1), 50);
+      return { ...w, tasks: newTasks };
+    });
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+  }, []);
 
   const useTemplate = useCallback((idx: number) => {
     const t = TEMPLATES[idx];
@@ -105,13 +126,22 @@ export default function CreateScreen() {
 
   const handleFinish = useCallback(() => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    const dur = showCustomDur && wiz.customDuration
-      ? parseInt(wiz.customDuration) || wiz.duration
-      : wiz.duration;
-    createChallenge(wiz.name.trim(), dur, wiz.tasks, wiz.strictness);
-    showToast('🔥 Challenge started!');
+    if (isEditing && editChallenge) {
+      updateChallenge(editChallenge.id, {
+        name: wiz.name.trim(),
+        tasks: wiz.tasks,
+        strictness: wiz.strictness,
+      });
+      showToast('✅ Challenge updated!');
+    } else {
+      const dur = showCustomDur && wiz.customDuration
+        ? parseInt(wiz.customDuration) || wiz.duration
+        : wiz.duration;
+      createChallenge(wiz.name.trim(), dur, wiz.tasks, wiz.strictness);
+      showToast('🔥 Challenge started!');
+    }
     router.replace('/');
-  }, [wiz, showCustomDur, createChallenge, router]);
+  }, [wiz, showCustomDur, createChallenge, updateChallenge, isEditing, editChallenge, router]);
 
   const saveCustomTask = useCallback(() => {
     if (!customTaskName.trim()) { showToast('Task needs a name'); return; }
@@ -246,22 +276,93 @@ export default function CreateScreen() {
         </View>
       ) : (
         wiz.tasks.map((t, i) => (
-          <View key={i} style={[styles.taskRow, { backgroundColor: primary.bgE, borderColor: primary.borderA }]}>
-            <View style={[styles.taskPreview, { backgroundColor: 'rgba(255,255,255,0.04)', borderColor: 'rgba(255,255,255,0.06)' }]}>
-              <Text style={{ fontSize: 16 }}>{t.icon || TASK_ICONS[t.type]}</Text>
+          <View key={i}>
+            <View style={[styles.taskRow, { backgroundColor: primary.bgE, borderColor: editingTask === i ? accent.accent : primary.borderA }]}>
+              <View style={[styles.taskPreview, { backgroundColor: 'rgba(255,255,255,0.04)', borderColor: 'rgba(255,255,255,0.06)' }]}>
+                <Text style={{ fontSize: 16 }}>{t.icon || TASK_ICONS[t.type]}</Text>
+              </View>
+              <TouchableOpacity style={{ flex: 1 }} onPress={() => setEditingTask(editingTask === i ? null : i)}>
+                <Text style={[styles.taskRowName, { color: primary.t1 }]}>{t.name}</Text>
+                <Text style={[styles.taskRowMeta, { color: primary.t3 }]}>
+                  {TYPE_LABELS[t.type]}
+                  {t.config?.targetSec ? ` · ${Math.round(t.config.targetSec / 60)} min` : ''}
+                  {t.config?.targetOz ? ` · ${t.config.targetOz} oz` : ''}
+                  {t.config?.target ? ` · ${t.config.target} ${t.config.unit || ''}` : ''}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => setEditingTask(editingTask === i ? null : i)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} style={{ marginRight: 8 }}>
+                <Text style={{ fontSize: 14 }}>✏️</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => removeTask(i)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                <Text style={{ fontSize: 18, color: primary.t3 }}>×</Text>
+              </TouchableOpacity>
             </View>
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.taskRowName, { color: primary.t1 }]}>{t.name}</Text>
-              <Text style={[styles.taskRowMeta, { color: primary.t3 }]}>
-                {TYPE_LABELS[t.type]}
-                {t.config?.targetSec ? ` · ${Math.round(t.config.targetSec / 60)} min` : ''}
-                {t.config?.targetOz ? ` · ${t.config.targetOz} oz` : ''}
-                {t.config?.target ? ` · ${t.config.target} ${t.config.unit || ''}` : ''}
-              </Text>
-            </View>
-            <TouchableOpacity onPress={() => removeTask(i)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-              <Text style={{ fontSize: 18, color: primary.t3 }}>×</Text>
-            </TouchableOpacity>
+            {editingTask === i && (
+              <View style={[styles.editorCard, { backgroundColor: primary.bgS, borderColor: accent.accent, marginTop: -4, borderTopWidth: 0, borderTopLeftRadius: 0, borderTopRightRadius: 0 }]}>
+                <Text style={[styles.cap, { color: primary.t2, marginBottom: 4 }]}>TASK NAME</Text>
+                <TextInput
+                  style={[styles.editorInput, { backgroundColor: primary.bgI, color: primary.t1, borderColor: primary.border }]}
+                  value={t.name}
+                  onChangeText={v => setWiz(w => ({ ...w, tasks: w.tasks.map((tk, ti) => ti === i ? { ...tk, name: v } : tk) }))}
+                />
+                {t.type === 'timer' && (
+                  <View style={styles.configField}>
+                    <Text style={[styles.configLabel, { color: primary.t3 }]}>Target (minutes)</Text>
+                    <TextInput
+                      style={[styles.configInput, { backgroundColor: primary.bgI, color: primary.t1, borderColor: primary.border }]}
+                      keyboardType="number-pad" value={String(Math.round((t.config?.targetSec || 0) / 60))}
+                      onChangeText={v => setWiz(w => ({ ...w, tasks: w.tasks.map((tk, ti) => ti === i ? { ...tk, config: { ...tk.config, targetSec: (parseInt(v) || 0) * 60 } } : tk) }))}
+                    />
+                  </View>
+                )}
+                {t.type === 'water' && (
+                  <View style={styles.configField}>
+                    <Text style={[styles.configLabel, { color: primary.t3 }]}>Target (oz)</Text>
+                    <TextInput
+                      style={[styles.configInput, { backgroundColor: primary.bgI, color: primary.t1, borderColor: primary.border }]}
+                      keyboardType="number-pad" value={String(t.config?.targetOz || 64)}
+                      onChangeText={v => setWiz(w => ({ ...w, tasks: w.tasks.map((tk, ti) => ti === i ? { ...tk, config: { ...tk.config, targetOz: parseInt(v) || 0 } } : tk) }))}
+                    />
+                  </View>
+                )}
+                {t.type === 'value' && (
+                  <View style={{ flexDirection: 'row', gap: 8 }}>
+                    <View style={[styles.configField, { flex: 1 }]}>
+                      <Text style={[styles.configLabel, { color: primary.t3 }]}>Target</Text>
+                      <TextInput
+                        style={[styles.configInput, { backgroundColor: primary.bgI, color: primary.t1, borderColor: primary.border }]}
+                        keyboardType="number-pad" value={String(t.config?.target || 0)}
+                        onChangeText={v => setWiz(w => ({ ...w, tasks: w.tasks.map((tk, ti) => ti === i ? { ...tk, config: { ...tk.config, target: parseInt(v) || 0 } } : tk) }))}
+                      />
+                    </View>
+                    <View style={[styles.configField, { flex: 1 }]}>
+                      <Text style={[styles.configLabel, { color: primary.t3 }]}>Unit</Text>
+                      <TextInput
+                        style={[styles.configInput, { backgroundColor: primary.bgI, color: primary.t1, borderColor: primary.border }]}
+                        value={t.config?.unit || ''}
+                        onChangeText={v => setWiz(w => ({ ...w, tasks: w.tasks.map((tk, ti) => ti === i ? { ...tk, config: { ...tk.config, unit: v } } : tk) }))}
+                      />
+                    </View>
+                  </View>
+                )}
+                {t.type === 'counter' && (
+                  <View style={styles.configField}>
+                    <Text style={[styles.configLabel, { color: primary.t3 }]}>Unit label</Text>
+                    <TextInput
+                      style={[styles.configInput, { backgroundColor: primary.bgI, color: primary.t1, borderColor: primary.border }]}
+                      value={t.config?.unit || 'times'}
+                      onChangeText={v => setWiz(w => ({ ...w, tasks: w.tasks.map((tk, ti) => ti === i ? { ...tk, config: { ...tk.config, unit: v } } : tk) }))}
+                    />
+                  </View>
+                )}
+                <TouchableOpacity
+                  style={[styles.editorBtn, { backgroundColor: accent.accent, marginTop: 12 }]}
+                  onPress={() => setEditingTask(null)}
+                >
+                  <Text style={[styles.editorBtnText, { color: '#fff' }]}>Done</Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
         ))
       )}
@@ -583,7 +684,7 @@ export default function CreateScreen() {
             onPress={step === 5 ? handleFinish : goNext}
           >
             <Text style={styles.nextBtnText}>
-              {step === 5 ? '🔥 Begin Challenge' : 'Next'}
+              {step === 5 ? (isEditing ? '✅ Save Changes' : '🔥 Begin Challenge') : 'Next'}
             </Text>
           </TouchableOpacity>
         </View>

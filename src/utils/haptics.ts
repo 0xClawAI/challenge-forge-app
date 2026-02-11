@@ -10,31 +10,31 @@ if (isNative) {
 }
 
 export const ImpactFeedbackStyle = {
-  Light: 'Light' as const,
-  Medium: 'Medium' as const,
-  Heavy: 'Heavy' as const,
+  Light: 'light' as const,
+  Medium: 'medium' as const,
+  Heavy: 'heavy' as const,
 };
 
 export const NotificationFeedbackType = {
-  Success: 'Success' as const,
-  Warning: 'Warning' as const,
-  Error: 'Error' as const,
+  Success: 'success' as const,
+  Warning: 'warning' as const,
+  Error: 'error' as const,
 };
 
 export async function impactAsync(style?: string) {
   if (HapticsModule) {
-    return HapticsModule.impactAsync(style as any);
+    try { return await HapticsModule.impactAsync(style as any); } catch {}
   }
 }
 
 export async function notificationAsync(type?: string) {
   if (HapticsModule) {
-    return HapticsModule.notificationAsync(type as any);
+    try { return await HapticsModule.notificationAsync(type as any); } catch {}
   }
 }
 
 export async function selectionAsync() {
   if (HapticsModule) {
-    return HapticsModule.selectionAsync();
+    try { return await HapticsModule.selectionAsync(); } catch {}
   }
 }

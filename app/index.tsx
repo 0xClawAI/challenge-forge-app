@@ -238,7 +238,7 @@ function DailyScreen({ challengeId }: { challengeId: string }) {
               <Text style={[styles.h1, { color: primary.t1, flex: 1 }]}>{ch.name}</Text>
               <TouchableOpacity
                 style={[styles.editIcon, { backgroundColor: 'rgba(255,255,255,0.06)', borderColor: primary.border }]}
-                onPress={() => router.push('/create')}
+                onPress={() => router.push({ pathname: '/create', params: { editId: ch.id } })}
               >
                 <Text style={{ fontSize: 14 }}>✏️</Text>
               </TouchableOpacity>
