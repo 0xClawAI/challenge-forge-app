@@ -30,9 +30,9 @@ function HomeScreen() {
     <ScrollView style={[styles.view, { backgroundColor: primary.bg }]} contentContainerStyle={styles.viewContent}>
       <View style={styles.hero}>
         <Text style={{ fontSize: 64, marginBottom: 16 }}>🔥</Text>
-        <Text style={[styles.display, { color: primary.t1 }]}>Challenge{'\n'}Forge</Text>
+        <Text style={[styles.display, { color: primary.t1 }]}>My75</Text>
         <Text style={[styles.tagline, { color: primary.t2 }]}>
-          Build your challenge. Set your rules.{'\n'}Forge your discipline.
+          Your challenge. Your rules.{'\n'}Your transformation.
         </Text>
         <TouchableOpacity
           style={[styles.btnP, { backgroundColor: accent.accent }]}

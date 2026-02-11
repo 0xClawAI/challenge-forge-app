@@ -1,12 +1,12 @@
 {
   "expo": {
-    "name": "challenge-forge-app",
-    "slug": "challenge-forge-app",
+    "name": "My75",
+    "slug": "my75",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
-    "scheme": "challenge-forge",
+    "scheme": "my75",
     "newArchEnabled": true,
     "splash": {
       "image": "./assets/splash-icon.png",

@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, ScrollView, StyleSheet } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Modal, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../src/theme/ThemeContext';
 import { useChallengeStore } from '../src/stores/challengeStore';
@@ -31,6 +31,13 @@ export default function ProgressScreen() {
   const completed = getCompletedDays(ch, Math.min(dn, ch.duration));
   const pct = Math.round((completed / ch.duration) * 100);
   const bigCirc = Math.PI * 124;
+  const [selectedDay, setSelectedDay] = useState<number | null>(null);
+
+  const screenWidth = Dimensions.get('window').width;
+  const gridPadding = 20 * 2;
+  const gap = 6;
+  const cols = 7;
+  const cellSize = Math.floor((screenWidth - gridPadding - gap * (cols - 1)) / cols);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: primary.bg }} edges={['top']}>
@@ -61,7 +68,7 @@ export default function ProgressScreen() {
 
         {/* Day Grid */}
         <Text style={[styles.h3, { color: primary.t1 }]}>Day Grid</Text>
-        <View style={styles.dayGrid}>
+        <View style={[styles.dayGrid, { gap }]}>
           {Array.from({ length: ch.duration }, (_, i) => {
             const d = i + 1;
             const dk = getDayKey(ch.startDate, d);
@@ -80,12 +87,78 @@ export default function ProgressScreen() {
             else if (isFailed || isPast) { bg = 'rgba(239,68,68,0.7)'; textColor = '#fff'; }
 
             return (
-              <View key={d} style={[styles.dayCell, { backgroundColor: bg }]}>
+              <TouchableOpacity
+                key={d}
+                style={[styles.dayCell, { backgroundColor: bg, width: cellSize, height: cellSize }]}
+                onPress={() => (isPast || isToday) ? setSelectedDay(d) : null}
+                activeOpacity={isPast || isToday ? 0.6 : 1}
+              >
                 <Text style={[styles.dayCellText, { color: textColor }]}>{d}</Text>
-              </View>
+              </TouchableOpacity>
             );
           })}
         </View>
+
+        {/* Day Detail Modal */}
+        {selectedDay !== null && (() => {
+          const dk = getDayKey(ch.startDate, selectedDay);
+          const dayLog = getDayLog(ch, dk);
+          const done = isDayDone(ch, dk);
+          const dateObj = new Date(dk);
+          const dateStr = dateObj.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+
+          return (
+            <Modal visible transparent animationType="slide" onRequestClose={() => setSelectedDay(null)}>
+              <View style={styles.modalOverlay}>
+                <View style={[styles.modalContent, { backgroundColor: primary.bgS, borderColor: primary.border }]}>
+                  <View style={styles.modalHeader}>
+                    <View>
+                      <Text style={[styles.modalTitle, { color: primary.t1 }]}>Day {selectedDay}</Text>
+                      <Text style={[styles.modalDate, { color: primary.t2 }]}>{dateStr}</Text>
+                    </View>
+                    <TouchableOpacity onPress={() => setSelectedDay(null)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                      <Text style={{ fontSize: 24, color: primary.t3 }}>×</Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  <View style={[styles.modalStatus, { backgroundColor: done ? colors.ok + '14' : 'rgba(239,68,68,0.08)', borderColor: done ? colors.ok + '33' : 'rgba(239,68,68,0.2)' }]}>
+                    <Text style={{ fontSize: 18 }}>{done ? '✅' : dayLog.failed ? '❌' : dayLog.caughtUp ? '⏰' : '⚠️'}</Text>
+                    <Text style={[styles.modalStatusText, { color: done ? colors.ok : colors.err }]}>
+                      {done ? (dayLog.caughtUp ? 'Completed (Late)' : 'Completed') : dayLog.failed ? 'Failed' : 'Incomplete'}
+                    </Text>
+                  </View>
+
+                  <ScrollView style={{ maxHeight: 400 }}>
+                    {ch.tasks.map((task, i) => {
+                      const tl = dayLog.tasks[i] || {};
+                      const taskDone = isTaskDone(task, tl);
+                      return (
+                        <View key={i} style={[styles.modalTask, { borderColor: primary.border, borderLeftColor: taskDone ? colors.ok : primary.border, borderLeftWidth: 3 }]}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                            <Text style={{ fontSize: 16 }}>{task.icon || TASK_ICONS[task.type]}</Text>
+                            <Text style={[styles.modalTaskName, { color: primary.t1 }]}>{task.name}</Text>
+                            <Text style={{ fontSize: 14 }}>{taskDone ? '✅' : '—'}</Text>
+                          </View>
+                          {task.type === 'water' && <Text style={{ color: primary.t2, fontSize: 13 }}>{tl.oz || 0} / {task.config?.targetOz || 64} oz</Text>}
+                          {task.type === 'timer' && <Text style={{ color: primary.t2, fontSize: 13 }}>{Math.floor((tl.elapsed || 0) / 60)} / {Math.floor((task.config?.targetSec || 0) / 60)} min</Text>}
+                          {task.type === 'value' && tl.value != null && <Text style={{ color: primary.t2, fontSize: 13 }}>{tl.value} {task.config?.unit || ''} (target: {task.config?.target})</Text>}
+                          {task.type === 'counter' && <Text style={{ color: primary.t2, fontSize: 13 }}>{tl.count || 0} {task.config?.unit || 'times'}</Text>}
+                          {task.type === 'multi' && <Text style={{ color: primary.t2, fontSize: 13 }}>{(tl.selected || []).join(', ') || 'None'}</Text>}
+                          {task.type === 'journal' && tl.text && <Text style={{ color: primary.t2, fontSize: 13, fontStyle: 'italic' }} numberOfLines={3}>{tl.text}</Text>}
+                          {task.type === 'photo' && tl.photo && <Text style={{ color: primary.t2, fontSize: 13 }}>📷 Photo captured</Text>}
+                        </View>
+                      );
+                    })}
+                  </ScrollView>
+
+                  <TouchableOpacity style={[styles.modalClose, { backgroundColor: accent.accent }]} onPress={() => setSelectedDay(null)}>
+                    <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15 }}>Close</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </Modal>
+          );
+        })()}
 
         {/* Task breakdown */}
         <Text style={[styles.h3, { color: primary.t1, marginTop: 24 }]}>Task Breakdown</Text>
@@ -132,9 +205,20 @@ const styles = StyleSheet.create({
   statVal: { fontSize: 26, fontWeight: '800', fontVariant: ['tabular-nums'] },
   statLabel: { fontSize: 10, fontWeight: '600', letterSpacing: 0.5, marginTop: 4 },
   ringWrap: { alignItems: 'center', marginVertical: 28 },
-  dayGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 5, marginVertical: 16 },
-  dayCell: { width: 38, aspectRatio: 1, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
-  dayCellText: { fontSize: 12, fontWeight: '600', fontVariant: ['tabular-nums'] },
+  dayGrid: { flexDirection: 'row', flexWrap: 'wrap', marginVertical: 16 },
+  dayCell: { borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  dayCellText: { fontSize: 15, fontWeight: '700', fontVariant: ['tabular-nums'] },
+  // Day detail modal
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
+  modalContent: { borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40, borderWidth: 1, borderBottomWidth: 0, maxHeight: '80%' },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 },
+  modalTitle: { fontSize: 24, fontWeight: '800' },
+  modalDate: { fontSize: 14, marginTop: 2 },
+  modalStatus: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12, borderRadius: 12, borderWidth: 1, marginBottom: 16 },
+  modalStatusText: { fontWeight: '600', fontSize: 14 },
+  modalTask: { padding: 14, borderRadius: 12, borderWidth: 1, marginBottom: 8 },
+  modalTaskName: { fontWeight: '600', fontSize: 14, flex: 1 },
+  modalClose: { height: 50, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginTop: 16 },
   taskBreakdown: { borderRadius: 14, padding: 16, marginBottom: 10, borderWidth: 1 },
   taskBreakdownHeader: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   taskBName: { fontWeight: '600', fontSize: 14 },

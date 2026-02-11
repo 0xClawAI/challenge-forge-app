@@ -5,6 +5,8 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider, useTheme } from '../src/theme/ThemeContext';
 import { ToastProvider } from '../src/components/Toast';
 import { ErrorBoundary } from '../src/components/ErrorBoundary';
+import { useChallengeStore } from '../src/stores/challengeStore';
+import { getStatus } from '../src/utils/challenge';
 
 function TabIcon({ emoji, focused }: { emoji: string; focused: boolean }) {
   return <Text style={{ fontSize: 22, opacity: focused ? 1 : 0.5 }}>{emoji}</Text>;
@@ -12,6 +14,9 @@ function TabIcon({ emoji, focused }: { emoji: string; focused: boolean }) {
 
 function AppTabs() {
   const { primary, accent } = useTheme();
+  const { challenges, activeId, dayResetHour } = useChallengeStore();
+  const activeCh = challenges.find(c => c.id === activeId);
+  const hasActive = activeCh && getStatus(activeCh, dayResetHour) === 'active';
 
   return (
     <>
@@ -54,6 +59,7 @@ function AppTabs() {
           options={{
             title: 'New',
             tabBarIcon: ({ focused }) => <TabIcon emoji="➕" focused={focused} />,
+            href: hasActive ? null : '/create',
           }}
         />
         <Tabs.Screen
