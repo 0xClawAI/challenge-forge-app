@@ -17,6 +17,7 @@ interface ChallengeState {
   updateTaskLog: (challengeId: string, dateKey: string, taskIdx: number, update: Partial<TaskLog>) => void;
   failChallenge: (id: string) => void;
   endChallenge: (id: string) => void;
+  updateDayLog: (challengeId: string, dateKey: string, update: Partial<DayLog>) => void;
   resetAllData: () => void;
   importData: (challenges: Challenge[], activeId: string | null) => void;
 }
@@ -66,6 +67,18 @@ export const useChallengeStore = create<ChallengeState>()(
             const dayLog = { ...log[dateKey], tasks: { ...log[dateKey].tasks } };
             dayLog.tasks[taskIdx] = { ...(dayLog.tasks[taskIdx] || {}), ...update };
             log[dateKey] = dayLog;
+            return { ...c, log };
+          }),
+        }));
+      },
+
+      updateDayLog: (challengeId, dateKey, update) => {
+        set((state) => ({
+          challenges: state.challenges.map(c => {
+            if (c.id !== challengeId) return c;
+            const log = { ...c.log };
+            if (!log[dateKey]) log[dateKey] = { tasks: {} };
+            log[dateKey] = { ...log[dateKey], ...update };
             return { ...c, log };
           }),
         }));

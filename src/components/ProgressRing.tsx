@@ -12,7 +12,7 @@ interface Props {
 }
 
 export function ProgressRing({ size, strokeWidth, progress, color, label }: Props) {
-  const { accent, colors } = useTheme();
+  const { accent, colors, primary } = useTheme();
   const radius = (size - strokeWidth) / 2;
   const circumference = Math.PI * 2 * radius;
   const offset = circumference * (1 - Math.min(progress, 100) / 100);
@@ -41,7 +41,7 @@ export function ProgressRing({ size, strokeWidth, progress, color, label }: Prop
           fill="none"
         />
       </Svg>
-      <Text style={[styles.label, { fontSize: size * 0.23 }]}>{label}</Text>
+      <Text style={[styles.label, { fontSize: size * 0.23, color: primary.t1 }]}>{label}</Text>
     </View>
   );
 }
@@ -54,7 +54,6 @@ const styles = StyleSheet.create({
   label: {
     position: 'absolute',
     fontWeight: '800',
-    color: '#F1F1F6',
     fontVariant: ['tabular-nums'],
   },
 });

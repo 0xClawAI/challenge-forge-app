@@ -29,7 +29,14 @@
     },
     "plugins": [
       "expo-router",
-      "expo-font"
+      "expo-font",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Challenge Forge to access your photos for progress tracking.",
+          "cameraPermission": "Allow Challenge Forge to use your camera for progress photos."
+        }
+      ]
     ]
   }
 }

@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, Pressable } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, Pressable, Image } from 'react-native';
 import * as Haptics from 'expo-haptics';
+import * as ImagePicker from 'expo-image-picker';
 import { useTheme } from '../theme/ThemeContext';
 import { Task, TaskLog } from '../types';
 import { TYPE_COLORS, TASK_ICONS } from '../theme/colors';
@@ -281,6 +282,61 @@ function renderInput(task: Task, tl: TaskLog, timerDisplay: number, ctx: any) {
         </View>
       );
 
+    case 'photo': {
+      const handlePhoto = async () => {
+        try {
+          const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ['images'],
+            quality: 0.7,
+            allowsEditing: true,
+          });
+          if (!result.canceled && result.assets[0]) {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            onUpdate({ photo: result.assets[0].uri });
+          }
+        } catch (e) {
+          console.warn('Photo picker error:', e);
+        }
+      };
+      const handleCamera = async () => {
+        try {
+          const perm = await ImagePicker.requestCameraPermissionsAsync();
+          if (!perm.granted) return;
+          const result = await ImagePicker.launchCameraAsync({
+            quality: 0.7,
+            allowsEditing: true,
+          });
+          if (!result.canceled && result.assets[0]) {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            onUpdate({ photo: result.assets[0].uri });
+          }
+        } catch (e) {
+          console.warn('Camera error:', e);
+        }
+      };
+      return (
+        <View style={styles.photoWrap}>
+          {tl.photo && (
+            <Image source={{ uri: tl.photo }} style={styles.photoPreview} resizeMode="cover" />
+          )}
+          <View style={styles.photoBtns}>
+            <TouchableOpacity
+              style={[styles.photoBtn, { backgroundColor: accent.accent + '1A', borderColor: accent.accent + '26' }]}
+              onPress={handleCamera}
+            >
+              <Text style={[styles.photoBtnText, { color: accent.accentL }]}>📸 Camera</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.photoBtn, { backgroundColor: 'rgba(255,255,255,0.06)', borderColor: primary.border }]}
+              onPress={handlePhoto}
+            >
+              <Text style={[styles.photoBtnText, { color: primary.t2 }]}>🖼️ Gallery</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      );
+    }
+
     case 'journal':
       return (
         <View style={styles.journalWrap}>
@@ -435,6 +491,13 @@ const styles = StyleSheet.create({
   timerBtns: { flexDirection: 'row', gap: 8, marginTop: 14 },
   timerBtn: { height: 44, paddingHorizontal: 24, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   timerBtnText: { fontWeight: '600', fontSize: 14 },
+
+  // Photo
+  photoWrap: { marginTop: 12 },
+  photoPreview: { width: '100%', height: 200, borderRadius: 10, marginBottom: 8 },
+  photoBtns: { flexDirection: 'row', gap: 8 },
+  photoBtn: { flex: 1, height: 40, borderRadius: 20, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  photoBtnText: { fontWeight: '600', fontSize: 13 },
 
   // Journal
   journalWrap: { marginTop: 12 },

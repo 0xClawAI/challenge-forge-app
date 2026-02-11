@@ -3,6 +3,7 @@ import { StatusBar } from 'expo-status-bar';
 import { View, Text, StyleSheet } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider, useTheme } from '../src/theme/ThemeContext';
+import { ToastProvider } from '../src/components/Toast';
 
 function TabIcon({ emoji, focused }: { emoji: string; focused: boolean }) {
   return <Text style={{ fontSize: 22, opacity: focused ? 1 : 0.5 }}>{emoji}</Text>;
@@ -77,7 +78,9 @@ export default function Layout() {
   return (
     <SafeAreaProvider>
       <ThemeProvider>
-        <AppTabs />
+        <ToastProvider>
+          <AppTabs />
+        </ToastProvider>
       </ThemeProvider>
     </SafeAreaProvider>
   );
