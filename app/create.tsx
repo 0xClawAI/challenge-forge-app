@@ -5,8 +5,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import DraggableFlatList, { ScaleDecorator, RenderItemParams } from 'react-native-draggable-flatlist';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
+// DraggableFlatList removed — Worklets version mismatch in Expo Go
+// Using up/down buttons for reordering instead
 import * as Haptics from '../src/utils/haptics';
 import { useTheme } from '../src/theme/ThemeContext';
 import { useChallengeStore } from '../src/stores/challengeStore';
@@ -278,124 +278,138 @@ export default function CreateScreen() {
         </View>
       ) : (
         <>
-          <Text style={[{ color: primary.t3, fontSize: 11, marginBottom: 8, textAlign: 'center' }]}>Long-press to drag and reorder</Text>
-          <GestureHandlerRootView>
-            <DraggableFlatList
-              data={wiz.tasks.map((t, i) => ({ ...t, _idx: i }))}
-              scrollEnabled={false}
-              onDragBegin={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); }}
-              onDragEnd={({ data }) => {
-                setWiz(w => ({ ...w, tasks: data.map(({ _idx, ...rest }) => rest as any) }));
-                setEditingTask(null);
-              }}
-              keyExtractor={(_, index) => String(index)}
-              renderItem={({ item, drag, isActive, getIndex }: RenderItemParams<any>) => {
-                const i = getIndex() ?? 0;
-                const t = item;
-                return (
-                  <ScaleDecorator>
-                    <View style={{ opacity: isActive ? 0.9 : 1 }}>
-                      <TouchableOpacity
-                        onLongPress={drag}
-                        delayLongPress={150}
-                        activeOpacity={0.7}
-                        disabled={isActive}
-                        style={[styles.taskRow, { backgroundColor: primary.bgE, borderColor: editingTask === i ? accent.accent : primary.borderA }]}
-                      >
-                        <View style={[styles.taskPreview, { backgroundColor: 'rgba(255,255,255,0.04)', borderColor: 'rgba(255,255,255,0.06)' }]}>
-                          <Text style={{ fontSize: 16 }}>{t.icon || TASK_ICONS[t.type]}</Text>
-                        </View>
-                        <TouchableOpacity style={{ flex: 1 }} onPress={() => setEditingTask(editingTask === i ? null : i)}>
-                          <Text style={[styles.taskRowName, { color: primary.t1 }]}>{t.name}</Text>
-                          <Text style={[styles.taskRowMeta, { color: primary.t3 }]}>
-                            {TYPE_LABELS[t.type]}
-                            {t.config?.targetSec ? ` · ${Math.round(t.config.targetSec / 60)} min` : ''}
-                            {t.config?.targetOz ? ` · ${t.config.targetOz} oz` : ''}
-                            {t.config?.target ? ` · ${t.config.target} ${t.config.unit || ''}` : ''}
-                          </Text>
-                        </TouchableOpacity>
-                        <View style={styles.dragHandle}>
-                          <Text style={{ color: primary.t3, fontSize: 16 }}>⋮⋮</Text>
-                        </View>
-                        <TouchableOpacity onPress={() => setEditingTask(editingTask === i ? null : i)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} style={{ marginRight: 8 }}>
-                          <Text style={{ fontSize: 14 }}>✏️</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity onPress={() => removeTask(i)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                          <Text style={{ fontSize: 18, color: primary.t3 }}>×</Text>
-                        </TouchableOpacity>
-                      </TouchableOpacity>
-                      {editingTask === i && (
-                        <View style={[styles.editorCard, { backgroundColor: primary.bgS, borderColor: accent.accent, marginTop: -4, borderTopWidth: 0, borderTopLeftRadius: 0, borderTopRightRadius: 0 }]}>
-                          <Text style={[styles.cap, { color: primary.t2, marginBottom: 4 }]}>TASK NAME</Text>
-                          <TextInput
-                            style={[styles.editorInput, { backgroundColor: primary.bgI, color: primary.t1, borderColor: primary.border }]}
-                            value={t.name}
-                            onChangeText={v => setWiz(w => ({ ...w, tasks: w.tasks.map((tk, ti) => ti === i ? { ...tk, name: v } : tk) }))}
-                          />
-                          {t.type === 'timer' && (
-                            <View style={styles.configField}>
-                              <Text style={[styles.configLabel, { color: primary.t3 }]}>Target (minutes)</Text>
-                              <TextInput
-                                style={[styles.configInput, { backgroundColor: primary.bgI, color: primary.t1, borderColor: primary.border }]}
-                                keyboardType="number-pad" value={String(Math.round((t.config?.targetSec || 0) / 60))}
-                                onChangeText={v => setWiz(w => ({ ...w, tasks: w.tasks.map((tk, ti) => ti === i ? { ...tk, config: { ...tk.config, targetSec: (parseInt(v) || 0) * 60 } } : tk) }))}
-                              />
-                            </View>
-                          )}
-                          {t.type === 'water' && (
-                            <View style={styles.configField}>
-                              <Text style={[styles.configLabel, { color: primary.t3 }]}>Target (oz)</Text>
-                              <TextInput
-                                style={[styles.configInput, { backgroundColor: primary.bgI, color: primary.t1, borderColor: primary.border }]}
-                                keyboardType="number-pad" value={String(t.config?.targetOz || 64)}
-                                onChangeText={v => setWiz(w => ({ ...w, tasks: w.tasks.map((tk, ti) => ti === i ? { ...tk, config: { ...tk.config, targetOz: parseInt(v) || 0 } } : tk) }))}
-                              />
-                            </View>
-                          )}
-                          {t.type === 'value' && (
-                            <View style={{ flexDirection: 'row', gap: 8 }}>
-                              <View style={[styles.configField, { flex: 1 }]}>
-                                <Text style={[styles.configLabel, { color: primary.t3 }]}>Target</Text>
-                                <TextInput
-                                  style={[styles.configInput, { backgroundColor: primary.bgI, color: primary.t1, borderColor: primary.border }]}
-                                  keyboardType="number-pad" value={String(t.config?.target || 0)}
-                                  onChangeText={v => setWiz(w => ({ ...w, tasks: w.tasks.map((tk, ti) => ti === i ? { ...tk, config: { ...tk.config, target: parseInt(v) || 0 } } : tk) }))}
-                                />
-                              </View>
-                              <View style={[styles.configField, { flex: 1 }]}>
-                                <Text style={[styles.configLabel, { color: primary.t3 }]}>Unit</Text>
-                                <TextInput
-                                  style={[styles.configInput, { backgroundColor: primary.bgI, color: primary.t1, borderColor: primary.border }]}
-                                  value={t.config?.unit || ''}
-                                  onChangeText={v => setWiz(w => ({ ...w, tasks: w.tasks.map((tk, ti) => ti === i ? { ...tk, config: { ...tk.config, unit: v } } : tk) }))}
-                                />
-                              </View>
-                            </View>
-                          )}
-                          {t.type === 'counter' && (
-                            <View style={styles.configField}>
-                              <Text style={[styles.configLabel, { color: primary.t3 }]}>Unit label</Text>
-                              <TextInput
-                                style={[styles.configInput, { backgroundColor: primary.bgI, color: primary.t1, borderColor: primary.border }]}
-                                value={t.config?.unit || 'times'}
-                                onChangeText={v => setWiz(w => ({ ...w, tasks: w.tasks.map((tk, ti) => ti === i ? { ...tk, config: { ...tk.config, unit: v } } : tk) }))}
-                              />
-                            </View>
-                          )}
-                          <TouchableOpacity
-                            style={[styles.editorBtn, { backgroundColor: accent.accent, marginTop: 12 }]}
-                            onPress={() => setEditingTask(null)}
-                          >
-                            <Text style={[styles.editorBtnText, { color: '#fff' }]}>Done</Text>
-                          </TouchableOpacity>
-                        </View>
-                      )}
+          <Text style={[{ color: primary.t3, fontSize: 11, marginBottom: 8, textAlign: 'center' }]}>Use arrows to reorder tasks</Text>
+          <View>
+            {wiz.tasks.map((t, i) => (
+              <View key={i}>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <View style={{ marginRight: 4 }}>
+                    <TouchableOpacity
+                      disabled={i === 0}
+                      onPress={() => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        setWiz(w => {
+                          const tasks = [...w.tasks];
+                          [tasks[i - 1], tasks[i]] = [tasks[i], tasks[i - 1]];
+                          return { ...w, tasks };
+                        });
+                        if (editingTask === i) setEditingTask(i - 1);
+                        else if (editingTask === i - 1) setEditingTask(i);
+                      }}
+                      hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                    >
+                      <Text style={{ fontSize: 18, color: i === 0 ? primary.border : primary.t3 }}>▲</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      disabled={i === wiz.tasks.length - 1}
+                      onPress={() => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        setWiz(w => {
+                          const tasks = [...w.tasks];
+                          [tasks[i], tasks[i + 1]] = [tasks[i + 1], tasks[i]];
+                          return { ...w, tasks };
+                        });
+                        if (editingTask === i) setEditingTask(i + 1);
+                        else if (editingTask === i + 1) setEditingTask(i);
+                      }}
+                      hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                    >
+                      <Text style={{ fontSize: 18, color: i === wiz.tasks.length - 1 ? primary.border : primary.t3 }}>▼</Text>
+                    </TouchableOpacity>
+                  </View>
+                  <TouchableOpacity
+                    activeOpacity={0.7}
+                    style={[styles.taskRow, { flex: 1, backgroundColor: primary.bgE, borderColor: editingTask === i ? accent.accent : primary.borderA }]}
+                  >
+                    <View style={[styles.taskPreview, { backgroundColor: 'rgba(255,255,255,0.04)', borderColor: 'rgba(255,255,255,0.06)' }]}>
+                      <Text style={{ fontSize: 16 }}>{t.icon || TASK_ICONS[t.type]}</Text>
                     </View>
-                  </ScaleDecorator>
-                );
-              }}
-            />
-          </GestureHandlerRootView>
+                    <TouchableOpacity style={{ flex: 1 }} onPress={() => setEditingTask(editingTask === i ? null : i)}>
+                      <Text style={[styles.taskRowName, { color: primary.t1 }]}>{t.name}</Text>
+                      <Text style={[styles.taskRowMeta, { color: primary.t3 }]}>
+                        {TYPE_LABELS[t.type]}
+                        {t.config?.targetSec ? ` · ${Math.round(t.config.targetSec / 60)} min` : ''}
+                        {t.config?.targetOz ? ` · ${t.config.targetOz} oz` : ''}
+                        {t.config?.target ? ` · ${t.config.target} ${t.config.unit || ''}` : ''}
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => setEditingTask(editingTask === i ? null : i)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} style={{ marginRight: 8 }}>
+                      <Text style={{ fontSize: 14 }}>✏️</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => removeTask(i)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                      <Text style={{ fontSize: 18, color: primary.t3 }}>×</Text>
+                    </TouchableOpacity>
+                  </TouchableOpacity>
+                </View>
+                {editingTask === i && (
+                  <View style={[styles.editorCard, { backgroundColor: primary.bgS, borderColor: accent.accent, marginTop: -4, borderTopWidth: 0, borderTopLeftRadius: 0, borderTopRightRadius: 0 }]}>
+                    <Text style={[styles.cap, { color: primary.t2, marginBottom: 4 }]}>TASK NAME</Text>
+                    <TextInput
+                      style={[styles.editorInput, { backgroundColor: primary.bgI, color: primary.t1, borderColor: primary.border }]}
+                      value={t.name}
+                      onChangeText={v => setWiz(w => ({ ...w, tasks: w.tasks.map((tk, ti) => ti === i ? { ...tk, name: v } : tk) }))}
+                    />
+                    {t.type === 'timer' && (
+                      <View style={styles.configField}>
+                        <Text style={[styles.configLabel, { color: primary.t3 }]}>Target (minutes)</Text>
+                        <TextInput
+                          style={[styles.configInput, { backgroundColor: primary.bgI, color: primary.t1, borderColor: primary.border }]}
+                          keyboardType="number-pad" value={String(Math.round((t.config?.targetSec || 0) / 60))}
+                          onChangeText={v => setWiz(w => ({ ...w, tasks: w.tasks.map((tk, ti) => ti === i ? { ...tk, config: { ...tk.config, targetSec: (parseInt(v) || 0) * 60 } } : tk) }))}
+                        />
+                      </View>
+                    )}
+                    {t.type === 'water' && (
+                      <View style={styles.configField}>
+                        <Text style={[styles.configLabel, { color: primary.t3 }]}>Target (oz)</Text>
+                        <TextInput
+                          style={[styles.configInput, { backgroundColor: primary.bgI, color: primary.t1, borderColor: primary.border }]}
+                          keyboardType="number-pad" value={String(t.config?.targetOz || 64)}
+                          onChangeText={v => setWiz(w => ({ ...w, tasks: w.tasks.map((tk, ti) => ti === i ? { ...tk, config: { ...tk.config, targetOz: parseInt(v) || 0 } } : tk) }))}
+                        />
+                      </View>
+                    )}
+                    {t.type === 'value' && (
+                      <View style={{ flexDirection: 'row', gap: 8 }}>
+                        <View style={[styles.configField, { flex: 1 }]}>
+                          <Text style={[styles.configLabel, { color: primary.t3 }]}>Target</Text>
+                          <TextInput
+                            style={[styles.configInput, { backgroundColor: primary.bgI, color: primary.t1, borderColor: primary.border }]}
+                            keyboardType="number-pad" value={String(t.config?.target || 0)}
+                            onChangeText={v => setWiz(w => ({ ...w, tasks: w.tasks.map((tk, ti) => ti === i ? { ...tk, config: { ...tk.config, target: parseInt(v) || 0 } } : tk) }))}
+                          />
+                        </View>
+                        <View style={[styles.configField, { flex: 1 }]}>
+                          <Text style={[styles.configLabel, { color: primary.t3 }]}>Unit</Text>
+                          <TextInput
+                            style={[styles.configInput, { backgroundColor: primary.bgI, color: primary.t1, borderColor: primary.border }]}
+                            value={t.config?.unit || ''}
+                            onChangeText={v => setWiz(w => ({ ...w, tasks: w.tasks.map((tk, ti) => ti === i ? { ...tk, config: { ...tk.config, unit: v } } : tk) }))}
+                          />
+                        </View>
+                      </View>
+                    )}
+                    {t.type === 'counter' && (
+                      <View style={styles.configField}>
+                        <Text style={[styles.configLabel, { color: primary.t3 }]}>Unit label</Text>
+                        <TextInput
+                          style={[styles.configInput, { backgroundColor: primary.bgI, color: primary.t1, borderColor: primary.border }]}
+                          value={t.config?.unit || 'times'}
+                          onChangeText={v => setWiz(w => ({ ...w, tasks: w.tasks.map((tk, ti) => ti === i ? { ...tk, config: { ...tk.config, unit: v } } : tk) }))}
+                        />
+                      </View>
+                    )}
+                    <TouchableOpacity
+                      style={[styles.editorBtn, { backgroundColor: accent.accent, marginTop: 12 }]}
+                      onPress={() => setEditingTask(null)}
+                    >
+                      <Text style={[styles.editorBtnText, { color: '#fff' }]}>Done</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </View>
+            ))}
+          </View>
         </>
       )}
 
