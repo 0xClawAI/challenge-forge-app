@@ -40,11 +40,6 @@ export function CatchUpModal({ challenge, dayResetHour, onComplete, onDismiss }:
   );
   const [currentIdx, setCurrentIdx] = useState(0);
 
-  if (missedDays.length === 0) return null;
-
-  const currentDay = missedDays[currentIdx];
-  const allActioned = missedDays.every(d => actions[d] !== undefined);
-
   const handleFail = useCallback((day: number) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setActions(a => ({ ...a, [day]: 'failed' }));
@@ -79,6 +74,11 @@ export function CatchUpModal({ challenge, dayResetHour, onComplete, onDismiss }:
     missedDays.forEach(d => { if (!final[d]) final[d] = 'failed'; });
     onComplete(final);
   }, [actions, missedDays, onComplete]);
+
+  if (missedDays.length === 0) return null;
+
+  const currentDay = missedDays[currentIdx];
+  const allActioned = missedDays.every(d => actions[d] !== undefined);
 
   // Single/double missed: per-day modal
   const renderSingleDay = (day: number) => {

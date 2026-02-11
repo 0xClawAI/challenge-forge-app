@@ -13,6 +13,8 @@ export default function ProgressScreen() {
   const { primary, accent, colors } = useTheme();
   const { challenges, activeId, dayResetHour } = useChallengeStore();
   const ch = challenges.find(c => c.id === activeId);
+  const [selectedDay, setSelectedDay] = useState<number | null>(null);
+  const [viewingPhoto, setViewingPhoto] = useState<string | null>(null);
 
   if (!ch) {
     return (
@@ -32,8 +34,6 @@ export default function ProgressScreen() {
   const completed = getCompletedDays(ch, Math.min(dn, ch.duration));
   const pct = Math.round((completed / ch.duration) * 100);
   const bigCirc = Math.PI * 124;
-  const [selectedDay, setSelectedDay] = useState<number | null>(null);
-  const [viewingPhoto, setViewingPhoto] = useState<string | null>(null);
 
   const screenWidth = Dimensions.get('window').width;
   const gridPadding = 20 * 2;
